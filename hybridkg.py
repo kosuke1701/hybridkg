@@ -27,6 +27,8 @@ class Entity(nn.Module):
         super(Entity, self).__init__()
 
         self.if_reparam = if_reparam
+        self.dim_emb = dim_emb
+        self.n_entity = n_entity
 
         self.mu = nn.Parameter(
             torch.FloatTensor(np.random.normal(size=(n_entity, dim_emb)))
@@ -41,6 +43,20 @@ class Entity(nn.Module):
             return self.mu[idx], self.logvar[idx]
         else:
             return self.mu[idx]
+
+    def get_n_entity(self):
+        return self.n_entity
+
+    def loss_z(self, idx):
+        u"""
+        - q(z) { log p(z) - log q(z) }
+        """
+        if self.if_reparam:
+            raise NotImplementedError("hoge")
+        else:
+            mu = self.mu[idx]
+            l = 0.5 * 1.8378770 * self.dim_emb + 0.5 * torch.sum(mu ** 2, dim=1)
+            return l
 
 class PCA(nn.Module):
     pass

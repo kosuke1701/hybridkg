@@ -59,20 +59,46 @@ def loadCountry():
 
     return train_triples, test_triples, len(e2i), len(r2i)
 
+def calc_n_batch(n_data, s_batch):
+    return n_data // s_batch + (0 if n_data % s_batch == 0 else 1)
+
+def get_batch(n_data, s_batch, i_batch):
+    n_batch = calc_n_batch(n_data, s_batch)
+    i_batch = i_batch % n_batch
+    start = i_batch * s_batch
+    end = min((i_batch + 1) * s_batch, n_data)
+    return start, end
+
 def train(model, optimizer, entities, train_triples, train_lookup):
     model.train()
 
-    size_triple_batch = 50
-    n_triple_batch = len(train_triples) // size_triple_batch
-    n_batch = n_triple_batch
-    for i_batch in range(n_batch):
-        i_triple_batch = i_batch % n_triple_batch
+    #shuffle data
+    train_triples = deepcopy(train_triples)
+    np.random.shuffle(train_triples)
 
+    model_ents = [list(range(m.get_n_entity())) for m in model.models]
+    for i in range(len(model.models)):
+        np.random.shuffle(model_ents[i])
+
+    #iteration for batches
+    size_triple_batch = 50
+    size_entity_batch = 50
+    n_triple_batch = calc_n_batch(len(train_triples), size_triple_batch)
+    n_entity_batches = [calc_n_batch(m.get_n_entity(), size_entity_batch) for m in model.models]
+    n_batch = max(n_triple_batch, max(n_entity_batches))
+    for i_batch in range(n_batch):
         optimizer.zero_grad()
 
+        #entity
+        loss_entity = 0
+        for i,m in enumerate(model.models):
+            start, end = get_batch(m.get_n_entity(), size_entity_batch, i_batch)
+
+            loss_z = m.loss_z(model_ents[i][start:end])
+            loss_entity += torch.mean(loss_z) * m.get_n_entity()
+
         #triple
-        start = i_triple_batch * size_triple_batch
-        end = (i_triple_batch + 1) * size_triple_batch
+        start, end = get_batch(len(train_triples), size_triple_batch, i_batch)
 
         #positive
         heads = np.array([h for h,r,t in train_triples[start:end]], dtype=int)
@@ -111,7 +137,7 @@ def train(model, optimizer, entities, train_triples, train_lookup):
         loss_negative = model.calc_loss_y(heads, relations, tails, y)
 
         #train one step
-        loss = torch.mean(loss_positive) + torch.mean(loss_negative)
+        loss = (torch.mean(loss_positive) + torch.mean(loss_negative)) * len(train_triples) + loss_entity
         loss.backward()
         optimizer.step()
 
@@ -204,12 +230,12 @@ if __name__=="__main__":
             weight_decay_params.append(param)
         else:
             non_weight_decay_params.append(param)
-    optimizer = optim.Adagrad(
+    optimizer = optim.Adam(
                                 [
                                     {"params": weight_decay_params, "weight_decay":0.0001},
                                     {"params": non_weight_decay_params}
                                 ],
-                                lr=0.1, weight_decay=0
+                                lr=0.005, weight_decay=0
                              )
 
     for i_epoch in range(5000):
