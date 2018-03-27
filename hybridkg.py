@@ -1,9 +1,13 @@
 #coding: UTF-8
 
+import numpy as np
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable as _Variable
+
+from log1exp import log1exp
 
 ifcuda = False
 
@@ -53,9 +57,9 @@ class HybridDistMult(nn.Module):
         )
         self.models = nn.ModuleList([])
 
-    def reparameterize(self, mu, logvar):
+    def reparameterize(self, mu, logvar, mask):
         if self.if_reparam:
-            std = logvar.mul(0.5).exp_()
+            std = logvar.mul(0.5).exp_() * mask
             eps = Variable(std.data.new(std.size()).normal_())
             return eps.mul(std).add_(mu)
         else:
@@ -83,6 +87,7 @@ class HybridDistMult(nn.Module):
         #calculate latent variables (reparameterize if specified)
         mu = Variable(torch.FloatTensor(n_data, self.dim_emb).zero_())
         logvar = Variable(torch.FloatTensor(n_data, self.dim_emb).zero_())
+        mask = Variable(torch.FloatTensor(n_data, 1).zero_())
         for i_model in range(n_model):
             data_idx = data_idxs[i_model]
             model_idx = model_idxs[i_model]
@@ -93,10 +98,11 @@ class HybridDistMult(nn.Module):
             if model.if_reparam:
                 _mu, _logvar = ret
                 logvar[model_idx] *= _logvar
+                mask[model_idx] += 1.
             else:
                 _mu = ret
             mu[model_idx] += _mu
-        z = self.reparameterize(mu, logvar)
+        z = self.reparameterize(mu, logvar, mask)
 
         return z
 
