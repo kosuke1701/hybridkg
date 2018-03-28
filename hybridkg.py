@@ -39,6 +39,9 @@ class Entity(nn.Module):
             )
 
     def encode(self, idx):
+        if not isinstance(idx, _Variable):
+            idx = Variable(torch.LongTensor(idx))
+
         if self.if_reparam:
             return self.mu[idx], self.logvar[idx]
         else:
@@ -51,6 +54,9 @@ class Entity(nn.Module):
         u"""
         - q(z) { log p(z) - log q(z) }
         """
+        if not isinstance(idx, _Variable):
+            idx = Variable(torch.LongTensor(idx))
+
         if self.if_reparam:
             raise NotImplementedError("hoge")
         else:
@@ -59,11 +65,14 @@ class Entity(nn.Module):
             return l
 
 class PCA_data(nn.Module):
-    def __init__(self, n_entity, dim_latent, dim_data, dim_emb):
-        self.if_reparam = False
+    def __init__(self, n_entity, dim_latent, dim_data, dim_emb, with_kg=True):
+        super(PCA_data, self).__init__()
 
+        self.if_reparam = False
+        self.n_entity = n_entity
         self.dim_latent = dim_latent
         self.dim_data = dim_data
+        self.with_kg = with_kg
 
         self.x = nn.Parameter(
             torch.FloatTensor(np.random.normal(size=(n_entity, dim_latent)))
@@ -79,18 +88,25 @@ class PCA_data(nn.Module):
             torch.FloatTensor(np.ones(1))
         )
 
-        self.e = nn.Parameter(
-            torch.FloatTensor(np.random.normal(size=(n_entity, dim_emb)))
-        )
+        if with_kg:
+            self.e = nn.Parameter(
+                torch.FloatTensor(np.random.normal(size=(n_entity, dim_emb)))
+            )
 
-        self.f_e_to_x = nn.Linear(dim_emb, dim_latent)
-        self.log_V2 = nn.Parameter(
-            torch.FloatTensor(np.ones((1)))
-        )
+            self.f_e_to_x = nn.Linear(dim_emb, dim_latent)
+            self.log_V2 = nn.Parameter(
+                torch.FloatTensor(np.ones((1)))
+            )
 
     def encode(self, idx):
+        if not self.with_kg:
+            raise Exception("No KG mode.")
         if self.if_reparam:
             raise NotImplementedError("hoge")
+
+        if not isinstance(idx, _Variable):
+            idx = Variable(torch.LongTensor(idx))
+
         return self.e[idx]
 
     def get_n_entity(self):
@@ -102,6 +118,11 @@ class PCA_data(nn.Module):
         """
         if self.if_reparam:
             raise NotImplementedError("hoge")
+
+        if not isinstance(idx, _Variable):
+            idx = Variable(torch.LongTensor(idx))
+        if not isinstance(y, _Variable):
+            y = Variable(torch.FloatTensor(y))
 
         #term log p(x)
         x = self.x[idx]
@@ -115,16 +136,20 @@ class PCA_data(nn.Module):
         d = y - x @ self.W - self.mu
         L_inv_D_T, _ = torch.gesv(d.t(), L)
 
+        #NOTE: L_ing_D_T's shape is (dim_data, n_idx), and we want to sum up for dim_data dimension.
         l2 = 0.5 * 1.8378770 * self.dim_data\
                 + 0.5 * L.diag().log().sum()\
-                + 0.5 * torch.sum(L_ing_D_T**2, dim=1)
+                + 0.5 * torch.sum(L_inv_D_T**2, dim=0)
 
         #term log p(e|x)
-        mx = self.f_e_to_x(self.e[idx])
+        if self.with_kg:
+            mx = self.f_e_to_x(self.e[idx])
 
-        l3 = 0.5 * 1.8378770 * self.dim_data\
-                + 0.5 * self.log_V2 * self.dim_data\
-                + 0.5 * torch.sum((mx - x)**2 / self.log_V2.exp())
+            l3 = 0.5 * 1.8378770 * self.dim_data\
+                    + 0.5 * self.log_V2 * self.dim_data\
+                    + 0.5 * torch.sum((mx - x)**2 / self.log_V2.exp(), dim=1)
+        else:
+            l3 = 0.
 
         return l1 + l2 + l3
 
