@@ -1,0 +1,22 @@
+[Descriptions about each files in the dataset]
+  entities.txt
+    This file lists pairs of <entity-id> and <entity-name> of all entities.
+
+  relations.txt
+    This file lists pairs of <relation-id> and <relation-name> of all relations.
+
+  triples.txt
+    This file lists triples of <head-entity-id>, <relation-id>, <tail-entity-id>.
+
+  entities_with_data.txt
+    This file lists pairs of <entity-id> and <entity-name> of entities with temperature
+    and precipitation data.
+
+  temperature.txt
+    This file contains temperature data for all countries specified in entities_with_data.txt.
+    Each line corresponds to monthly temperature observation from Jan. 1901 to Dec. 2015 (1380 in total)
+    at each country. Order of countries are same as that of entities_with_data.txt.
+
+  rainfall.txt
+    This file contains precipitation data for all countries specified in entities_with_data.txt.
+    Format is same as temperature.txt

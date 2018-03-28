@@ -1,0 +1,2 @@
+0 isInside
+1 isNeighbor
