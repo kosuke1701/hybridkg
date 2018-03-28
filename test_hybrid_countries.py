@@ -213,8 +213,12 @@ def valid_kg(model, test_triples, remove_lookup):
 
     return MRR, HIT3
 
-if __name__=="__main__":
+def main(kg, seed, dim_emb, dim_latent, dim_hidden):
+    global with_kg
+    with_kg = kg
+
     triples, ent_with_data, temperature, rainfall, n_raw_entity, n_raw_relation = load_dataset()
+    rainfall /= 3000. #normalize
     e2d = {e:i for i,e in enumerate(ent_with_data)} #entity id -> data idx
 
     # In triple, each entity is described as (model_idx, entity_idx_in_model)
@@ -240,9 +244,10 @@ if __name__=="__main__":
     positive_lookup = set(triples)
 
     # create model
-    model = HybridDistMult(n_relation, dim_emb = 20)
-    ent_model = Entity(n_entity=n_raw_entity, dim_emb=20, if_reparam=False)
-    ent_rainfall = PCA_data(n_entity=len(ent_with_data), dim_latent=6, dim_data=12, dim_hidden=100, dim_emb=20)
+    model = HybridDistMult(n_relation, dim_emb = dim_emb)
+    ent_model = Entity(n_entity=n_raw_entity, dim_emb=dim_emb, if_reparam=False)
+    ent_rainfall = PCA_data(n_entity=len(ent_with_data), dim_latent=dim_latent, dim_data=12,\
+                                dim_hidden=dim_hidden, dim_emb=dim_emb)
     model.models.append(ent_model)
     model.models.append(ent_rainfall)
 
@@ -268,22 +273,52 @@ if __name__=="__main__":
 
     # rainfall data
     rainfall_idx = np.repeat(np.arange(len(ent_with_data), dtype=int)[:,np.newaxis], 115, axis=1)
+    rainfall_idx, rainfall = shuffle(rainfall_idx, rainfall, random_state=seed)
 
     train_rainfall_y = rainfall[:,:1,:].reshape((-1,12))
     train_rainfall_idx = rainfall_idx[:,:1].flatten()
 
+    valid_rainfall_y = rainfall[:,1:2,:].reshape((-1,12))
+    valid_rainfall_idx = rainfall_idx[:,1:2].flatten()
+
     test_rainfall_y = rainfall[:,50:,:].reshape((-1,12))
     test_rainfall_idx = rainfall_idx[:,50:].flatten()
 
-
-    for i_epoch in range(5000):
+    best_valid_loss = 1e100
+    best_test_loss = 1e100
+    best_epoch = 0
+    for i_epoch in range(2000):
         train(model, optimizer, triples, positive_lookup, train_rainfall_y, train_rainfall_idx)
         print("")
 
         if i_epoch % 5 == 0:
-            loss = valid(model, test_rainfall_y, test_rainfall_idx)
-            print(i_epoch, loss)
+            loss_valid = valid(model, valid_rainfall_y, valid_rainfall_idx)
+            loss_test = valid(model, test_rainfall_y, test_rainfall_idx)
+            if loss_valid < best_valid_loss:
+                best_valid_loss = loss_valid
+                best_test_loss = loss_test
+                best_epoch = i_epoch
+            print(i_epoch, loss_valid, loss_test)
 
             # #DEBUG:
             # if with_kg:
             #     print(valid_kg(model, test_triples, remove_lookup))
+    return best_valid_loss, best_test_loss, best_epoch
+
+if __name__=="__main__":
+    h = open("exp_with_kg.log", "w")
+
+    for dim_emb in [10,20,50,100,200]:
+        for dim_latent in [3,6,10]:
+            for dim_hidden in [5, 10, 30, 100, 300]:
+                b_vs = []
+                b_ts = []
+                for i in range(10):
+                    b_v, b_t, b_e = main(True, None, dim_emb=dim_emb, dim_latent=dim_latent, dim_hidden=dim_hidden)
+                    b_vs.append(b_v)
+                    b_ts.append(b_t)
+                    if b_e > 1900:
+                        h.write("over-epoch\n")
+                h.write("%d-%d-%d %.4f(%.4f) %.4f(%.4f)\n"%(dim_emb, dim_latent, dim_hidden, np.mean(b_vs), np.std(b_vs), np.mean(b_ts), np.std(b_ts)))
+                h.flush()
+    h.close()
