@@ -151,12 +151,67 @@ def valid(model, rainfall_y, rainfall_idx):
 
     # calculate mean loss for test set
     loss = torch.mean(model.models[1].loss_z(rainfall_idx, rainfall_y))
-    loss = loss.data.cpu().numpy()
+    loss = loss.data.cpu().numpy()[0]
 
     # reset PCA model configure
     model.models[1].with_kg = bu
 
     return loss
+
+def valid_kg(model, test_triples, remove_lookup):
+    model.eval()
+
+    ranks = []
+
+    for i_triple, test_triple in enumerate(test_triples):
+        sys.stdout.write("%d-%d\r"%(i_triple,len(test_triples)))
+        sys.stdout.flush()
+
+        h,r,t = test_triple
+
+        negative_heads = []
+        negative_tails = []
+        for e in range(model.models[h[0]].get_n_entity()):
+            if not (((h[0],e), r, t) in remove_lookup):
+                negative_heads.append((h[0], e))
+        for e in range(model.models[t[0]].get_n_entity()):
+            if not ((h, r, (t[0], e)) in remove_lookup):
+                negative_tails.append((t[0], e))
+
+        true_score = model.calc_score(
+            np.array([h], dtype=int),
+            np.array([r], dtype=int),
+            np.array([t], dtype=int)
+        ).data.cpu().numpy()[0]
+
+        neg_score1 = model.calc_score(
+            np.array(negative_heads, dtype=int),
+            np.array([r]*len(negative_heads), dtype=int),
+            np.array([t]*len(negative_heads), dtype=int)
+        ).data.cpu().numpy().tolist()
+
+        neg_score2 = model.calc_score(
+            np.array([h]*len(negative_tails), dtype=int),
+            np.array([r]*len(negative_tails), dtype=int),
+            np.array(negative_tails, dtype=int)
+        ).data.cpu().numpy().tolist()
+
+        scores = neg_score1 + [true_score]
+        scores = np.array(scores)
+        rank = np.sum(scores > true_score) + 1
+        ranks.append(rank)
+
+        scores = neg_score2 + [true_score]
+        scores = np.array(scores)
+        rank = np.sum(scores > true_score) + 1
+        ranks.append(rank)
+
+    ranks = np.array(ranks)
+
+    MRR = np.sum(1.0/ranks)/ranks.shape[0]
+    HIT3 = np.mean(ranks<4)
+
+    return MRR, HIT3
 
 if __name__=="__main__":
     triples, ent_with_data, temperature, rainfall, n_raw_entity, n_raw_relation = load_dataset()
@@ -175,12 +230,19 @@ if __name__=="__main__":
     n_entity = n_raw_entity + len(ent_with_data)
     n_relation = n_raw_relation + 1
 
+    # #DEBUG:
+    # triples = shuffle(triples)
+    # remove_lookup = set(triples)
+    # test_triples = triples[:100]
+    # train_triples = triples[100:]
+    # triples = train_triples
+
     positive_lookup = set(triples)
 
     # create model
-    model = HybridDistMult(n_relation, dim_emb = 10)
-    ent_model = Entity(n_entity=n_raw_entity, dim_emb=10, if_reparam=False)
-    ent_rainfall = PCA_data(n_entity=len(ent_with_data), dim_latent=3, dim_data=12, dim_emb=10)
+    model = HybridDistMult(n_relation, dim_emb = 20)
+    ent_model = Entity(n_entity=n_raw_entity, dim_emb=20, if_reparam=False)
+    ent_rainfall = PCA_data(n_entity=len(ent_with_data), dim_latent=6, dim_data=12, dim_hidden=100, dim_emb=20)
     model.models.append(ent_model)
     model.models.append(ent_rainfall)
 
@@ -207,8 +269,8 @@ if __name__=="__main__":
     # rainfall data
     rainfall_idx = np.repeat(np.arange(len(ent_with_data), dtype=int)[:,np.newaxis], 115, axis=1)
 
-    train_rainfall_y = rainfall[:,:50,:].reshape((-1,12))
-    train_rainfall_idx = rainfall_idx[:,:50].flatten()
+    train_rainfall_y = rainfall[:,:1,:].reshape((-1,12))
+    train_rainfall_idx = rainfall_idx[:,:1].flatten()
 
     test_rainfall_y = rainfall[:,50:,:].reshape((-1,12))
     test_rainfall_idx = rainfall_idx[:,50:].flatten()
@@ -221,3 +283,7 @@ if __name__=="__main__":
         if i_epoch % 5 == 0:
             loss = valid(model, test_rainfall_y, test_rainfall_idx)
             print(i_epoch, loss)
+
+            # #DEBUG:
+            # if with_kg:
+            #     print(valid_kg(model, test_triples, remove_lookup))

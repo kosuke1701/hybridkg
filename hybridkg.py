@@ -65,7 +65,7 @@ class Entity(nn.Module):
             return l
 
 class PCA_data(nn.Module):
-    def __init__(self, n_entity, dim_latent, dim_data, dim_emb, with_kg=True):
+    def __init__(self, n_entity, dim_latent, dim_data, dim_emb, dim_hidden, with_kg=True):
         super(PCA_data, self).__init__()
 
         self.if_reparam = False
@@ -93,7 +93,12 @@ class PCA_data(nn.Module):
                 torch.FloatTensor(np.random.normal(size=(n_entity, dim_emb)))
             )
 
-            self.f_e_to_x = nn.Linear(dim_emb, dim_latent)
+            #self.f_e_to_x = nn.Linear(dim_emb, dim_latent)
+            self.f_e_to_x = nn.Sequential(
+                nn.Linear(dim_emb, dim_hidden),
+                nn.Tanh(),
+                nn.Linear(dim_hidden, dim_latent)
+            )
             self.log_V2 = nn.Parameter(
                 torch.FloatTensor(np.ones((1)))
             )
