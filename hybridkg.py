@@ -58,8 +58,76 @@ class Entity(nn.Module):
             l = 0.5 * 1.8378770 * self.dim_emb + 0.5 * torch.sum(mu ** 2, dim=1)
             return l
 
-class PCA(nn.Module):
-    pass
+class PCA_data(nn.Module):
+    def __init__(self, n_entity, dim_latent, dim_data, dim_emb):
+        self.if_reparam = False
+
+        self.dim_latent = dim_latent
+        self.dim_data = dim_data
+
+        self.x = nn.Parameter(
+            torch.FloatTensor(np.random.normal(size=(n_entity, dim_latent)))
+        )
+        #NOTE: self.W is transposed version of W in equation y~WX+mu
+        self.W = nn.Parameter(
+            torch.FloatTensor(np.random.uniform(-1.,1.,size=(dim_latent, dim_data))/dim_latent**0.5)
+        )
+        self.mu = nn.Parameter(
+            torch.FloatTensor(np.zeros(dim_data))
+        )
+        self.log_sigma2 = nn.Parameter(
+            torch.FloatTensor(np.ones(1))
+        )
+
+        self.e = nn.Parameter(
+            torch.FloatTensor(np.random.normal(size=(n_entity, dim_emb)))
+        )
+
+        self.f_e_to_x = nn.Linear(dim_emb, dim_latent)
+        self.log_V2 = nn.Parameter(
+            torch.FloatTensor(np.ones((1)))
+        )
+
+    def encode(self, idx):
+        if self.if_reparam:
+            raise NotImplementedError("hoge")
+        return self.e[idx]
+
+    def get_n_entity(self):
+        return self.n_entity
+
+    def loss_z(self, idx, y):
+        u"""
+            y -- instance of Variable with size (n_entity, dim_data)
+        """
+        if self.if_reparam:
+            raise NotImplementedError("hoge")
+
+        #term log p(x)
+        x = self.x[idx]
+        l1 = 0.5 * 1.8378770 * self.dim_latent + 0.5 * torch.sum(x ** 2, dim=1)
+
+        #term log p(y|x)
+        C = self.W.t() @ self.W\
+            + self.log_sigma2.exp() * Variable(torch.eye(self.dim_data))
+        L = torch.potrf(C, upper=False)
+
+        d = y - x @ self.W - self.mu
+        L_inv_D_T, _ = torch.gesv(d.t(), L)
+
+        l2 = 0.5 * 1.8378770 * self.dim_data\
+                + 0.5 * L.diag().log().sum()\
+                + 0.5 * torch.sum(L_ing_D_T**2, dim=1)
+
+        #term log p(e|x)
+        mx = self.f_e_to_x(self.e[idx])
+
+        l3 = 0.5 * 1.8378770 * self.dim_data\
+                + 0.5 * self.log_V2 * self.dim_data\
+                + 0.5 * torch.sum((mx - x)**2 / self.log_V2.exp())
+
+        return l1 + l2 + l3
+
 
 class HybridDistMult(nn.Module):
     def __init__(self, n_relation, dim_emb):
