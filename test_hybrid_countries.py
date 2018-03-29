@@ -309,19 +309,35 @@ def main(kg, seed, dim_emb, dim_latent, dim_hidden):
     return best_valid_loss, best_test_loss, best_epoch
 
 if __name__=="__main__":
-    h = open("exp_with_kg.log", "w")
+    # h = open("exp_with_kg.log", "w")
+    #
+    # for dim_emb in [10,20,50,100,200]:
+    #     for dim_latent in [3,6,10]:
+    #         for dim_hidden in [5, 10, 30, 100, 300]:
+    #             b_vs = []
+    #             b_ts = []
+    #             for i in range(10):
+    #                 b_v, b_t, b_e = main(True, None, dim_emb=dim_emb, dim_latent=dim_latent, dim_hidden=dim_hidden)
+    #                 b_vs.append(b_v)
+    #                 b_ts.append(b_t)
+    #                 if b_e > 1900:
+    #                     h.write("over-epoch\n")
+    #             h.write("%d-%d-%d %.4f(%.4f) %.4f(%.4f)\n"%(dim_emb, dim_latent, dim_hidden, np.mean(b_vs), np.std(b_vs), np.mean(b_ts), np.std(b_ts)))
+    #             h.flush()
+    # h.close()
 
-    for dim_emb in [10,20,50,100,200]:
-        for dim_latent in [3,6,10]:
-            for dim_hidden in [5, 10, 30, 100, 300]:
-                b_vs = []
-                b_ts = []
-                for i in range(10):
-                    b_v, b_t, b_e = main(True, None, dim_emb=dim_emb, dim_latent=dim_latent, dim_hidden=dim_hidden)
-                    b_vs.append(b_v)
-                    b_ts.append(b_t)
-                    if b_e > 1900:
-                        h.write("over-epoch\n")
-                h.write("%d-%d-%d %.4f(%.4f) %.4f(%.4f)\n"%(dim_emb, dim_latent, dim_hidden, np.mean(b_vs), np.std(b_vs), np.mean(b_ts), np.std(b_ts)))
-                h.flush()
+    h = open("exp_without_kg.log", "w")
+
+
+    for dim_latent in [3,6,10]:
+        b_vs = []
+        b_ts = []
+        for i in range(10):
+            b_v, b_t, b_e = main(False, None, dim_emb=1, dim_latent=dim_latent, dim_hidden=1)
+            b_vs.append(b_v)
+            b_ts.append(b_t)
+            if b_e > 1900:
+                h.write("over-epoch\n")
+        h.write("%d %.4f(%.4f) %.4f(%.4f)\n"%(dim_latent, np.mean(b_vs), np.std(b_vs), np.mean(b_ts), np.std(b_ts)))
+        h.flush()
     h.close()
