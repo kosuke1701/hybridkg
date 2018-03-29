@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from hybridkg import Entity, PCA_data, HybridDistMult, Variable
+from hybridkg import Entity, PCA_data, HybridDistMult, Variable, ifcuda
 
 with_kg = True
 
@@ -250,6 +250,9 @@ def main(kg, seed, dim_emb, dim_latent, dim_hidden):
                                 dim_hidden=dim_hidden, dim_emb=dim_emb)
     model.models.append(ent_model)
     model.models.append(ent_rainfall)
+
+    if ifcuda:
+        model.cuda()
 
     if not with_kg:
         model.models[1].with_kg = False
