@@ -278,11 +278,11 @@ def main(kg, seed, dim_emb, dim_latent, dim_hidden):
     rainfall_idx = np.repeat(np.arange(len(ent_with_data), dtype=int)[:,np.newaxis], 115, axis=1)
     rainfall_idx, rainfall = shuffle(rainfall_idx, rainfall, random_state=seed)
 
-    train_rainfall_y = rainfall[:,:1,:].reshape((-1,12))
-    train_rainfall_idx = rainfall_idx[:,:1].flatten()
+    train_rainfall_y = rainfall[:,:40,:].reshape((-1,12))
+    train_rainfall_idx = rainfall_idx[:,:40].flatten()
 
-    valid_rainfall_y = rainfall[:,1:2,:].reshape((-1,12))
-    valid_rainfall_idx = rainfall_idx[:,1:2].flatten()
+    valid_rainfall_y = rainfall[:,40:50,:].reshape((-1,12))
+    valid_rainfall_idx = rainfall_idx[:,40:50].flatten()
 
     test_rainfall_y = rainfall[:,50:,:].reshape((-1,12))
     test_rainfall_idx = rainfall_idx[:,50:].flatten()
@@ -290,7 +290,7 @@ def main(kg, seed, dim_emb, dim_latent, dim_hidden):
     best_valid_loss = 1e100
     best_test_loss = 1e100
     best_epoch = 0
-    for i_epoch in range(2000):
+    for i_epoch in range(1000000):
         train(model, optimizer, triples, positive_lookup, train_rainfall_y, train_rainfall_idx)
         print("")
 
@@ -306,38 +306,45 @@ def main(kg, seed, dim_emb, dim_latent, dim_hidden):
             # #DEBUG:
             # if with_kg:
             #     print(valid_kg(model, test_triples, remove_lookup))
+
+        if best_epoch < i_epoch - 200:
+            break
     return best_valid_loss, best_test_loss, best_epoch
 
 if __name__=="__main__":
-    # h = open("exp_with_kg.log", "w")
+    #mod1: 実装でyの分布p(y|x)を間違えてxを周辺化している分布にしてしまっていたのを修正
+
+    # h = open("exp_with_kg_T40_mod1.log", "w")
     #
-    # for dim_emb in [10,20,50,100,200]:
-    #     for dim_latent in [3,6,10]:
-    #         for dim_hidden in [5, 10, 30, 100, 300]:
+    # for dim_emb in [50,100,200]:
+    #     for dim_latent in [3]:
+    #         for dim_hidden in [10, 30, 100]:
     #             b_vs = []
     #             b_ts = []
+    #             b_es = []
     #             for i in range(10):
     #                 b_v, b_t, b_e = main(True, None, dim_emb=dim_emb, dim_latent=dim_latent, dim_hidden=dim_hidden)
     #                 b_vs.append(b_v)
     #                 b_ts.append(b_t)
-    #                 if b_e > 1900:
-    #                     h.write("over-epoch\n")
+    #                 b_es.append(b_e)
+    #             h.write("%s\n"%(" ".join([str(x) for x in b_es])))
     #             h.write("%d-%d-%d %.4f(%.4f) %.4f(%.4f)\n"%(dim_emb, dim_latent, dim_hidden, np.mean(b_vs), np.std(b_vs), np.mean(b_ts), np.std(b_ts)))
     #             h.flush()
     # h.close()
 
-    h = open("exp_without_kg.log", "w")
+    h = open("exp_without_kg_T40_mod1.log", "w")
 
 
-    for dim_latent in [3,6,10]:
+    for dim_latent in [3]:
         b_vs = []
         b_ts = []
+        b_es = []
         for i in range(10):
             b_v, b_t, b_e = main(False, None, dim_emb=1, dim_latent=dim_latent, dim_hidden=1)
             b_vs.append(b_v)
             b_ts.append(b_t)
-            if b_e > 1900:
-                h.write("over-epoch\n")
+            b_es.append(b_e)
+        h.write("%s\n"%(" ".join([str(x) for x in b_es])))
         h.write("%d %.4f(%.4f) %.4f(%.4f)\n"%(dim_latent, np.mean(b_vs), np.std(b_vs), np.mean(b_ts), np.std(b_ts)))
         h.flush()
     h.close()
