@@ -147,8 +147,8 @@ class PCA_data(nn.Module):
         l1 = 0.5 * 1.8378770 * self.dim_latent + 0.5 * torch.sum(x ** 2, dim=1)
 
         #term log p(y|x)
-        C = self.W.t() @ self.W\
-            + self.log_sigma2.exp() * Variable(torch.eye(self.dim_data))
+        #DEBUG: これxも点推定してるこのモデルだとおかしくね
+        C = self.log_sigma2.exp() * Variable(torch.eye(self.dim_data))
         L = torch.potrf(C, upper=False)
 
         d = y - x @ self.W - self.mu
