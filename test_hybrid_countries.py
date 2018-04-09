@@ -313,12 +313,14 @@ def main(kg, seed, dim_emb, dim_latent, dim_hidden):
 
 if __name__=="__main__":
     #mod1: 実装でyの分布p(y|x)を間違えてxを周辺化している分布にしてしまっていたのを修正
+    #      x->eの部分は単純な線形写像f(e)に対するcollapsedなprior
+    #mod2: x->eの部分は隠れ層1層のMLPによるf(e)（以下同上
 
-    h = open("exp_with_kg_T40_mod1.log", "w")
+    h = open("exp_with_kg_T40_mod2.log", "w")
 
     for dim_emb in [20,50,100,200]:
         for dim_latent in [3]:
-            for dim_hidden in [10]:
+            for dim_hidden in [10,20,50]:
                 b_vs = []
                 b_ts = []
                 b_es = []
