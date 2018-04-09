@@ -93,28 +93,31 @@ class PCA_data(nn.Module):
                 torch.FloatTensor(np.random.normal(size=(n_entity, dim_emb)))
             )
 
-            #self.f_e_to_x = nn.Linear(dim_emb, dim_latent)
+            self.f_e_to_x = nn.Linear(dim_emb, dim_latent)
+
             # self.f_e_to_x = nn.Sequential(
             #     nn.Linear(dim_emb, dim_hidden),
             #     nn.Tanh(),
             #     nn.Linear(dim_hidden, dim_latent)
             # )
-            self.f_e_to_x_h = nn.Sequential(
-                nn.Linear(dim_emb, dim_hidden),
-                nn.Tanh()
-            )
-            self.f_e_to_x_mu = nn.Linear(dim_hidden, dim_latent)
-            self.f_e_to_x_logvar = nn.Linear(dim_hidden, dim_latent)
 
-            self.f_x_to_e_h = nn.Sequential(
-                nn.Linear(dim_latent, dim_hidden),
-                nn.Tanh()
-            )
-            self.f_x_to_e_mu = nn.Linear(dim_hidden, dim_emb)
-            self.f_x_to_e_logvar = nn.Linear(dim_hidden, dim_emb)
-            # self.log_V2 = nn.Parameter(
-            #     torch.FloatTensor(np.ones((1)))
+            # self.f_e_to_x_h = nn.Sequential(
+            #     nn.Linear(dim_emb, dim_hidden),
+            #     nn.Tanh()
             # )
+            # self.f_e_to_x_mu = nn.Linear(dim_hidden, dim_latent)
+            # self.f_e_to_x_logvar = nn.Linear(dim_hidden, dim_latent)
+            #
+            # self.f_x_to_e_h = nn.Sequential(
+            #     nn.Linear(dim_latent, dim_hidden),
+            #     nn.Tanh()
+            # )
+            # self.f_x_to_e_mu = nn.Linear(dim_hidden, dim_emb)
+            # self.f_x_to_e_logvar = nn.Linear(dim_hidden, dim_emb)
+
+            self.log_V2 = nn.Parameter(
+                torch.FloatTensor(np.ones((1)))
+            )
 
     def encode(self, idx):
         if not self.with_kg:
@@ -161,28 +164,29 @@ class PCA_data(nn.Module):
 
         #term log p(e|x)
         if self.with_kg:
-            # mx = self.f_e_to_x(self.e[idx])
+            mx = self.f_e_to_x(self.e[idx])
+
+            l3 = 0.5 * 1.8378770 * self.dim_latent\
+                    + 0.5 * self.log_V2 * self.dim_latent\
+                    + 0.5 * torch.sum((mx - x)**2 / self.log_V2.exp(), dim=1)
+
+            # he = self.f_e_to_x_h(self.e[idx])
+            # fe_mu = self.f_e_to_x_mu(he)
+            # fe_logvar = self.f_e_to_x_logvar(he)
             #
-            # l3 = 0.5 * 1.8378770 * self.dim_data\
-            #         + 0.5 * self.log_V2 * self.dim_data\
-            #         + 0.5 * torch.sum((mx - x)**2 / self.log_V2.exp(), dim=1)
-            he = self.f_e_to_x_h(self.e[idx])
-            fe_mu = self.f_e_to_x_mu(he)
-            fe_logvar = self.f_e_to_x_logvar(he)
-
-            le = 0.5 * 1.8378770 * self.dim_latent\
-                    + 0.5 * torch.sum(fe_logvar)\
-                    + 0.5 * torch.sum((fe_mu - x) / fe_logvar.exp(), dim=1)
-
-            hx = self.f_x_to_e_h(x)
-            fx_mu = self.f_x_to_e_mu(hx)
-            fx_logvar = self.f_x_to_e_logvar(hx)
-
-            lx = 0.5 * 1.8378770 * self.dim_emb\
-                    + 0.5 * torch.sum(fx_logvar)\
-                    + 0.5 * torch.sum((fx_mu - self.e[idx]) / fx_logvar.exp(), dim=1)
-
-            l3 = le + lx
+            # le = 0.5 * 1.8378770 * self.dim_latent\
+            #         + 0.5 * torch.sum(fe_logvar)\
+            #         + 0.5 * torch.sum((fe_mu - x) / fe_logvar.exp(), dim=1)
+            #
+            # hx = self.f_x_to_e_h(x)
+            # fx_mu = self.f_x_to_e_mu(hx)
+            # fx_logvar = self.f_x_to_e_logvar(hx)
+            #
+            # lx = 0.5 * 1.8378770 * self.dim_emb\
+            #         + 0.5 * torch.sum(fx_logvar)\
+            #         + 0.5 * torch.sum((fx_mu - self.e[idx]) / fx_logvar.exp(), dim=1)
+            #
+            # l3 = le + lx
         else:
             l3 = 0.
 

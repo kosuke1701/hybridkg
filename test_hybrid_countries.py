@@ -314,37 +314,37 @@ def main(kg, seed, dim_emb, dim_latent, dim_hidden):
 if __name__=="__main__":
     #mod1: 実装でyの分布p(y|x)を間違えてxを周辺化している分布にしてしまっていたのを修正
 
-    # h = open("exp_with_kg_T40_mod1.log", "w")
-    #
-    # for dim_emb in [50,100,200]:
-    #     for dim_latent in [3]:
-    #         for dim_hidden in [10, 30, 100]:
-    #             b_vs = []
-    #             b_ts = []
-    #             b_es = []
-    #             for i in range(10):
-    #                 b_v, b_t, b_e = main(True, None, dim_emb=dim_emb, dim_latent=dim_latent, dim_hidden=dim_hidden)
-    #                 b_vs.append(b_v)
-    #                 b_ts.append(b_t)
-    #                 b_es.append(b_e)
-    #             h.write("%s\n"%(" ".join([str(x) for x in b_es])))
-    #             h.write("%d-%d-%d %.4f(%.4f) %.4f(%.4f)\n"%(dim_emb, dim_latent, dim_hidden, np.mean(b_vs), np.std(b_vs), np.mean(b_ts), np.std(b_ts)))
-    #             h.flush()
-    # h.close()
+    h = open("exp_with_kg_T40_mod1.log", "w")
 
-    h = open("exp_without_kg_T40_mod1.log", "w")
-
-
-    for dim_latent in [3]:
-        b_vs = []
-        b_ts = []
-        b_es = []
-        for i in range(10):
-            b_v, b_t, b_e = main(False, None, dim_emb=1, dim_latent=dim_latent, dim_hidden=1)
-            b_vs.append(b_v)
-            b_ts.append(b_t)
-            b_es.append(b_e)
-        h.write("%s\n"%(" ".join([str(x) for x in b_es])))
-        h.write("%d %.4f(%.4f) %.4f(%.4f)\n"%(dim_latent, np.mean(b_vs), np.std(b_vs), np.mean(b_ts), np.std(b_ts)))
-        h.flush()
+    for dim_emb in [20,50,100,200]:
+        for dim_latent in [3]:
+            for dim_hidden in [10]:
+                b_vs = []
+                b_ts = []
+                b_es = []
+                for i in range(10):
+                    b_v, b_t, b_e = main(True, None, dim_emb=dim_emb, dim_latent=dim_latent, dim_hidden=dim_hidden)
+                    b_vs.append(b_v)
+                    b_ts.append(b_t)
+                    b_es.append(b_e)
+                h.write("%s\n"%(" ".join([str(x) for x in b_es])))
+                h.write("%d-%d-%d %.4f(%.4f) %.4f(%.4f)\n"%(dim_emb, dim_latent, dim_hidden, np.mean(b_vs), np.std(b_vs), np.mean(b_ts), np.std(b_ts)))
+                h.flush()
     h.close()
+
+    # h = open("exp_without_kg_T40_mod1.log", "w")
+    #
+    #
+    # for dim_latent in [3]:
+    #     b_vs = []
+    #     b_ts = []
+    #     b_es = []
+    #     for i in range(10):
+    #         b_v, b_t, b_e = main(False, None, dim_emb=1, dim_latent=dim_latent, dim_hidden=1)
+    #         b_vs.append(b_v)
+    #         b_ts.append(b_t)
+    #         b_es.append(b_e)
+    #     h.write("%s\n"%(" ".join([str(x) for x in b_es])))
+    #     h.write("%d %.4f(%.4f) %.4f(%.4f)\n"%(dim_latent, np.mean(b_vs), np.std(b_vs), np.mean(b_ts), np.std(b_ts)))
+    #     h.flush()
+    # h.close()
