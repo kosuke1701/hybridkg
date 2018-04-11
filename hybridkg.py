@@ -93,13 +93,13 @@ class PCA_data(nn.Module):
                 torch.FloatTensor(np.random.normal(size=(n_entity, dim_emb)))
             )
 
-            #self.f_e_to_x = nn.Linear(dim_emb, dim_latent)
+            self.f_e_to_x = nn.Linear(dim_emb, dim_latent)
 
-            self.f_e_to_x = nn.Sequential(
-                nn.Linear(dim_emb, dim_hidden),
-                nn.Tanh(),
-                nn.Linear(dim_hidden, dim_latent)
-            )
+            # self.f_e_to_x = nn.Sequential(
+            #     nn.Linear(dim_emb, dim_hidden),
+            #     nn.Tanh(),
+            #     nn.Linear(dim_hidden, dim_latent)
+            # )
 
             # self.f_e_to_x_h = nn.Sequential(
             #     nn.Linear(dim_emb, dim_hidden),
