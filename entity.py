@@ -9,9 +9,9 @@ from torch.autograd import Variable as _Variable
 
 from log1exp import log1exp
 
-from hybridkg import Variable, Cuda, Model
+from hybridkg import Variable, Cuda, LVM
 
-class Entity(Model):
+class Entity(LVM):
     def __init__(self, n_entity, dim_emb, if_reparam):
         super(Entity, self).__init__(n_entity, if_reparam)
 

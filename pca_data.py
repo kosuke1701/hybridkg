@@ -9,9 +9,9 @@ from torch.autograd import Variable as _Variable
 
 from log1exp import log1exp
 
-from hybridkg import Variable, Cuda, Model
+from hybridkg import Variable, Cuda, LVM
 
-class PCA_data(Model):
+class PCA_data(LVM):
     def __init__(self, n_entity, dim_latent, dim_data, dim_emb, dim_hidden, with_kg=True):
         super(PCA_data, self).__init__(n_entity, False)
 

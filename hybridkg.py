@@ -22,9 +22,13 @@ def Cuda(tensor):
         tensor = tensor.cuda()
     return tensor
 
-class Model(nn.Module):
+class LVM(nn.Module):
+    u"""
+    Abstract class for LVM.
+    Each
+    """
     def __init__(self, n_entity, if_reparam):
-        super(Model, self).__init__()
+        super(LVM, self).__init__()
 
         self.if_reparam = if_reparam
         self.n_entity = n_entity
