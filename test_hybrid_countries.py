@@ -83,7 +83,8 @@ def train(model, optimizer, triples, positive_lookup, rainfall_y, rainfall_idx):
 
         start, end = get_batch(rainfall_y.shape[0], size_entity_batch, i_batch)
         loss_z = model.models[1].loss_z(rainfall_idx[start:end], rainfall_y[start:end])
-        loss_entity += torch.mean(loss_z) * n_rainfall
+        #loss_entity += torch.mean(loss_z) * n_rainfall
+        loss_entity  += torch.mean(loss_z) * model.models[1].get_n_entity()
 
         #triple
         if with_kg:
@@ -307,7 +308,7 @@ def main(kg, seed, dim_emb, dim_latent, dim_hidden):
             # if with_kg:
             #     print(valid_kg(model, test_triples, remove_lookup))
 
-        if best_epoch < i_epoch - 200:
+        if best_epoch < i_epoch - 50:
             break
     return best_valid_loss, best_test_loss, best_epoch
 
@@ -315,16 +316,17 @@ if __name__=="__main__":
     #mod1: 実装でyの分布p(y|x)を間違えてxを周辺化している分布にしてしまっていたのを修正
     #      x->eの部分は単純な線形写像f(e)に対するcollapsedなprior
     #mod2: x->eの部分は隠れ層1層のMLPによるf(e)（以下同上
+    #mod5: 線形写像。PCA側のlossについて変数の個数を国の個数とする
 
-    h = open("exp_with_kg_T40_mod2.log", "w")
+    h = open("exp_with_kg_T40_E100_mod5.log", "w")
 
-    for dim_emb in [20,50,100,200]:
+    for dim_emb in [20,40,60,80]:
         for dim_latent in [3]:
-            for dim_hidden in [10,20,50]:
+            for dim_hidden in [10]:
                 b_vs = []
                 b_ts = []
                 b_es = []
-                for i in range(10):
+                for i in range(100):
                     b_v, b_t, b_e = main(True, None, dim_emb=dim_emb, dim_latent=dim_latent, dim_hidden=dim_hidden)
                     b_vs.append(b_v)
                     b_ts.append(b_t)
