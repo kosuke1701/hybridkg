@@ -11,7 +11,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from hybridkg import Entity, PCA_data, HybridDistMult, Variable, ifcuda
+from hybridkg import HybridDistMult, Variable, ifcuda
+from entity import Entity
+from pca_data import PCA_data
 
 with_kg = True
 

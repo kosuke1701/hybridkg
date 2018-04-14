@@ -11,7 +11,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from hybridkg import Entity, PCA_data, HybridDistMult, Variable, ifcuda
+from hybridkg import HybridDistMult, Variable, ifcuda
+from entity import Entity
+from pca_data import PCA_data
 
 with_kg = True
 
@@ -353,7 +355,7 @@ if __name__=="__main__":
     #mod3: 単純な線形写像。　temperatureモデルも導入
     #mod4: PCA側のlossについて変数の個数を国の個数とする
 
-    h = open("exp_with_kg_T40_E100_mod4_1.log", "w")
+    h = open("exp_with_kg_T40_E100_mod4_2.log", "w")
 
     for dim_emb in [20,40,60,80]:
         for dim_latent in [3]:
