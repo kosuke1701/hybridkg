@@ -25,10 +25,7 @@ class Entity(LVM):
                 torch.FloatTensor(np.ones((n_entity, dim_emb)) * (-10.))
             )
 
-    def encode(self, idx):
-        if not isinstance(idx, _Variable):
-            idx = Variable(torch.LongTensor(idx))
-
+    def _encode(self, idx):
         if self.if_reparam:
             return self.mu[idx], self.logvar[idx]
         else:

@@ -68,6 +68,7 @@ def train(model, optimizer, triples, positive_lookup, rainfall_y, rainfall_idx, 
     size_triple_batch = 50
     size_entity_batch = 50
 
+    #tripleとentityで数が違うのでバッチ数が異なる
     n_triple_batch = calc_n_batch(len(triples), size_triple_batch)
     n_entity_batch = calc_n_batch(entity_idx.shape[0], size_entity_batch)
     n_rainfall_batch = calc_n_batch(rainfall_y.shape[0], size_entity_batch)
@@ -79,8 +80,10 @@ def train(model, optimizer, triples, positive_lookup, rainfall_y, rainfall_idx, 
         optimizer.zero_grad()
 
         #entity
+        #lossについて、以下ではentityの個数に応じて重みづける
         loss_entity = 0
 
+        #KGのentityに対してlossを計算するのはKGを考慮するときのみ
         if with_kg:
             start, end = get_batch(entity_idx.shape[0], size_entity_batch, i_batch)
             loss_z = model.models[0].loss_z(entity_idx[start:end])
@@ -99,6 +102,8 @@ def train(model, optimizer, triples, positive_lookup, rainfall_y, rainfall_idx, 
         loss_entity  += torch.mean(loss_z) * model.models[2].get_n_entity()
 
         #triple
+        #tripleのlossもtripleの個数で重み付ける
+        #TODO: entityとtripleを異なる重みでlossに反映させてもいいかもしれない loss(entity) + C * loss(triple)みたいな感じに
         if with_kg:
             loss_triple = 0
 
@@ -234,11 +239,13 @@ def main(kg, seed, dim_emb, dim_latent, dim_hidden):
     temperature /= 40. #normalize
     rainfall /= 3000. #normalize
     e2d = {e:i for i,e in enumerate(ent_with_data)} #entity id -> data idx
+    #data idxは各国の降水量データにおける行番号
 
     # In triple, each entity is described as (model_idx, entity_idx_in_model)
     # model 0: normal entity.
     # model 1: PCA for rainfall data. (latent variable of country -> 12 dim monthly rainfall)
-    # create new relation between entity and rainfall data with ID: n_raw_entity
+    # model 2: PCA for temperature data. (latent variable of country -> 12 dim monthly rainfall)
+    # create new relation between entity and rainfall, temperature data.
     triples = [((0,h), r, (0,t)) for (h,r,t) in triples]
     for e in ent_with_data:
         d = e2d[e]
@@ -251,16 +258,11 @@ def main(kg, seed, dim_emb, dim_latent, dim_hidden):
     n_entity = n_raw_entity + len(ent_with_data)
     n_relation = n_raw_relation + 2
 
-    # #DEBUG:
-    # triples = shuffle(triples)
-    # remove_lookup = set(triples)
-    # test_triples = triples[:100]
-    # train_triples = triples[100:]
-    # triples = train_triples
-
+    #あるtripleが訓練データに含まれるかを検索するためのもの。set使うとそこそこ早い
     positive_lookup = set(triples)
 
     # create model
+    # PCAは各國に1つ潜在変数が存在し、その潜在変数から実際のデータが1つ生成されるようなモデルとしている
     model = HybridDistMult(n_relation, dim_emb = dim_emb)
     ent_model = Entity(n_entity=n_raw_entity, dim_emb=dim_emb, if_reparam=False)
     ent_rainfall = PCA_data(n_entity=len(ent_with_data), dim_latent=dim_latent, dim_data=12,\
@@ -295,6 +297,7 @@ def main(kg, seed, dim_emb, dim_latent, dim_hidden):
                                 lr=0.005, weight_decay=0
                              )
 
+    #すべての国に対して115年分12次元のデータがあるので、何年ぶんかまとめてtrain, valid, testに分ける
     # rainfall data
     rainfall_idx = np.repeat(np.arange(len(ent_with_data), dtype=int)[:,np.newaxis], 115, axis=1)
     rainfall_idx, rainfall = shuffle(rainfall_idx, rainfall, random_state=seed)
@@ -321,6 +324,7 @@ def main(kg, seed, dim_emb, dim_latent, dim_hidden):
     test_temperature_y = temperature[:,50:,:].reshape((-1,12))
     test_temperature_idx = temperature_idx[:,50:].flatten()
 
+    #
     best_valid_loss = 1e100
     best_test_loss = 1e100
     best_valid_loss_t = 1e100

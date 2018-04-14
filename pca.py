@@ -42,14 +42,11 @@ class PCA(LVM):
                 torch.FloatTensor(np.ones(1))
             )
 
-    def encode(self, idx):
+    def _encode(self, idx):
         if not self.with_kg:
             raise Exception("No KG mode.")
         if self.if_reparam:
             raise NotImplementedError("hoge")
-
-        if not isinstance(idx, _Variable):
-            idx = Variable(torch.LongTensor(idx))
 
         return self.e[idx]
 

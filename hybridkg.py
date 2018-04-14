@@ -25,7 +25,31 @@ def Cuda(tensor):
 class LVM(nn.Module):
     u"""
     Abstract class for LVM.
-    Each
+
+    [Note]
+        1. If self.if_reparam is True, embeddings of entities in this LVM are sampled
+           using reparameterization trick.
+           (It assumes that posterior of embeddings is modeled by Gaussian and mean field approximation.)
+
+           If self.if_reparam is False, embeddings of entities in this LVM will be
+           point estimated.
+
+        2. Class function _encode(self, idx) must be implemented in its child classes.
+           This function will return embeddings of entities which are specified by idx.
+           (idx is 1 dimensional torch.LongTensor.)
+
+           If self.if_reparam is True, _encode(self, idx) must return tuple of 2 Variables.
+           First Variable is mean vecotrs for entities specified by idx.
+           (Each row corresponds to each entry in idx.)
+           Second Variable is logarithm of diagonal variance vectors for entities specified by idx.
+           (Each row corresponds to each entry in idx.)
+
+           If self.if_reparam is False, _encode(self, idx) must return one Variable.
+           It is embedding vectors of entities specified by idx.
+           (Each row corresponds to each entry in idx.)
+
+           In both cases, returned Variable's tensor must be 2 dimensional torch.FloatTensor,
+           and their shapes are (dimension-of-idx, dimension-of-embedding).
     """
     def __init__(self, n_entity, if_reparam):
         super(LVM, self).__init__()
@@ -34,12 +58,35 @@ class LVM(nn.Module):
         self.n_entity = n_entity
 
     def encode(self, idx):
+        if not isinstance(idx, _Variable):
+            idx = Variable(torch.LongTensor(idx))
+
+        return self._encode(idx)
+
+    def _encode(self, idx):
         raise NotImplementedError("")
 
     def get_n_entity(self):
         return self.n_entity
 
 class HybridDistMult(nn.Module):
+    u"""
+    This class calculates loss for knowledge graph, i.e. - log[p(triples|entity embeddings)].
+
+    p(triples|entity embeddings) =
+                              | sigmoid(e_h * M_r * e_t)      (if (h,r,t) is true)
+        \prod_{(h,r,t) \in T} |
+                              | 1 - sigmoid(e_h * M_r * e_t)  (if (h,r,t) is false)
+
+    [Note]
+        1. LVMs in a model must be listed in its self.models.
+
+        2. Each entitiy (or node) is represented by 2 types of index (index of LVM model
+           and index of the entity in the LVM).
+
+        3. Use function calc_loss_y(self, heads, relations, tails, y) to calculate loss for mini-batch
+           of triples.
+    """
     def __init__(self, n_relation, dim_emb):
         super(HybridDistMult, self).__init__()
 
@@ -131,6 +178,12 @@ class HybridDistMult(nn.Module):
             y -- ndarray (int or float) with 1 dimension.
                 each element specifies whether corresponding triple holds or not.
                 (1 means true, 0 means false)
+
+        [Return values]
+            loss_y
+            loss_y -- Calculated loss -logp(triple|embedding) for triples.
+                      Variable of 1 dimensional torch.FloatTensor.
+                      Each entry corresponds to each triple in given mini-batch of triples.
         """
         score = self.calc_score(heads, relations, tails)
         loss_y = self.loss_y(score, Variable(torch.FloatTensor(y)))
