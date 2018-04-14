@@ -89,7 +89,6 @@ class PCA_data(LVM):
         l1 = 0.5 * 1.8378770 * self.dim_latent + 0.5 * torch.sum(x ** 2, dim=1)
 
         #term log p(y|x)
-        #DEBUG: これxも点推定してるこのモデルだとおかしくね
         C = self.log_sigma2.exp() * Variable(torch.eye(self.dim_data))
         L = torch.potrf(C, upper=False)
 
